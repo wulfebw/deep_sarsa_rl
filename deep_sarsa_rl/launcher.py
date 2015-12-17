@@ -138,6 +138,12 @@ def process_args(args, defaults, description):
                         type=bool, default=defaults.CUDNN_DETERMINISTIC,
                         help=('Whether to use deterministic backprop. ' +
                               '(default: %(default)s)'))
+    ### start added arguments
+    parser.add_argument('--lambda', dest="lambda_decay",
+                        type=float, default=defaults.LAMBDA,
+                        help=('Lambda value. ' +
+                              '(default: %(default)s)'))
+    ### end added arguments
 
     parameters = parser.parse_args(args)
     if parameters.experiment_prefix is None:
@@ -205,6 +211,7 @@ def launch(args, defaults, description):
     num_actions = len(ale.getMinimalActionSet())
 
     if parameters.nn_file is None:
+        print('building network...')
         network = q_network.DeepQLearner(defaults.RESIZED_WIDTH,
                                          defaults.RESIZED_HEIGHT,
                                          num_actions,
@@ -214,27 +221,24 @@ def launch(args, defaults, description):
                                          parameters.rms_decay,
                                          parameters.rms_epsilon,
                                          parameters.momentum,
-                                         parameters.clip_delta,
-                                         parameters.freeze_interval,
-                                         parameters.batch_size,
                                          parameters.network_type,
                                          parameters.update_rule,
-                                         parameters.batch_accumulator,
+                                         parameters.lambda_decay
                                          rng)
     else:
+        print('loading network...')
         handle = open(parameters.nn_file, 'r')
         network = cPickle.load(handle)
 
-    agent = ale_agent.NeuralAgent(network,
+    print('building agent...')
+    agent = ale_agent.SARSALambdaAgent(network,
                                   parameters.epsilon_start,
                                   parameters.epsilon_min,
                                   parameters.epsilon_decay,
-                                  parameters.replay_memory_size,
                                   parameters.experiment_prefix,
-                                  parameters.replay_start_size,
-                                  parameters.update_frequency,
                                   rng)
 
+    print('building experiment...')
     experiment = ale_experiment.ALEExperiment(ale, agent,
                                               defaults.RESIZED_WIDTH,
                                               defaults.RESIZED_HEIGHT,
@@ -247,10 +251,8 @@ def launch(args, defaults, description):
                                               parameters.max_start_nullops,
                                               rng)
 
-
+    print('running experiment...')
     experiment.run()
-
-
 
 if __name__ == '__main__':
     pass

@@ -131,7 +131,6 @@ class ALEExperiment(object):
         Return: (terminal, num_steps)
 
         """
-
         self._init_episode()
 
         start_lives = self.ale.lives()
